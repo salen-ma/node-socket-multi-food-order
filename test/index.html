@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>在线多人点餐</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <style>
+      ul, li {
+        list-style: none;
+      }
+      p {
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        width: 200px;
+        margin-bottom: 15px;
+        overflow: hidden;
+      }
+      li img {
+        width: 100px;
+        margin-right: 10px;
+      }
+      .foodItem {
+        display: flex;
+      }
+      .info p {
+        margin-bottom: 5px;
+      }
+      .price {
+        color: red;
+      }
+      .operate {
+        float: right;
+      }
+      .operate span {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        text-align: center;
+        line-height: 18px;
+        border-radius: 50%;
+        border: 1px solid #ccc;
+        margin: 0 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1>在线多人点餐</h1>
+      <h3>餐桌 {{roomId}}</h3>
+      <ul>
+        <li v-for="item in list">
+          <div class="foodItem">
+            <img :src="item.img" alt="">
+            <div class="info">
+              <p>{{ item.name }}</p>
+              <div class="price">￥ {{ item.price }}</div>
+            </div>
+          </div>
+          <div class="operate">
+            <span @click="orderFood('del', item.id)">-</span>
+            {{item.orderNum}}
+            <span @click="orderFood('add', item.id)">+</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <script>
+      var vm;
+      var socket;
+      var roomId = getQueryString('room');
+
+      var initView = function () {
+        vm = new Vue({
+          el: '#app',
+          data: {
+            roomId: roomId,
+            list: []
+          },
+          methods: {
+            orderFood (operate, id) {
+              socket && socket.send(JSON.stringify({
+                type: 'order',
+                operate: operate,
+                id: id
+              }))
+              orderFood(operate, id, this.list)
+            }
+          },
+        })
+      }
+
+      var connect = function() {
+        console.log('connect...')
+        // 移动端使用需要改为本地 ip 地址，否则会有安全限制无法连接 socket
+        socket = new WebSocket('ws://localhost:3003/socket/websocket');
+        socket.onopen = function () {
+          console.log('open')
+          socket.send(JSON.stringify({
+            type: 'open',
+            roomId: roomId
+          }))
+        };
+
+        socket.onmessage = function (message) {
+          let item = JSON.parse(message.data)
+          console.log(item)
+          switch (item.type) {
+            // 用户连接
+            case 'init':
+              vm && (vm.list = item.foodList)
+            break;
+            // 用户点单
+            case 'order':
+              vm && orderFood(item.operate, item.id, vm.list)
+            break;
+          }
+        };
+
+        socket.onclose = function (e) {
+          console.log("close");
+          console.log(`code: ${e.code} reason: ${e.reason} clean: ${e.wasClean}`);
+
+        };
+      }
+
+      function orderFood(operate, id, list) {
+        for (let i = 0; i < list.length; i++) {
+          let item = list[i]
+          if (item.id === id) {
+            if (operate === 'add') {
+              item.orderNum++
+            }
+            if (operate === 'del' && item.orderNum > 0) {
+              item.orderNum--
+            }
+            break;
+          }
+        }
+      }
+
+      //采用正则表达式获取地址栏参数
+      function getQueryString (name) {
+        var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i')
+        var r = window.location.search.substr(1).match(reg)
+        if (r != null) return decodeURI(r[2])
+        return ''
+      }
+
+      initView()
+      connect()
+    </script>
+  </body>
+  <script src="https://assetscdn.51zouchuqu.com/js/vconsole.min.js"></script>
+  <script>let vConsole = new VConsole()</script>
+</html>

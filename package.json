@@ -1,0 +1,14 @@
+{
+  "name": "node-socket-multi-food-order",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "koa": "^2.13.0",
+    "koa-static": "^5.0.0",
+    "sockjs": "^0.3.21"
+  }
+}
